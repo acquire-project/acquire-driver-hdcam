@@ -6,6 +6,6 @@ This is an Acquire Driver that exposes Hamamatsu cameras via the [DCAM-SDK][].
 
 ### Camera
 
-- **Hamamatsu CP15440**
+- **Hamamatsu CP15440-20UP** Orca Fusion BT
 
 [DCAM-SDK]: https://dcam-api.com/sdk-download/

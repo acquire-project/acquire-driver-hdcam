@@ -22,13 +22,13 @@
 #define CHECK(e) EXPECT(e, "Expression was false:\n\t%s\n", #e)
 #define WARN(e) EXPECT_INNER(, e, , LOG, "Expression was false:\n\t%s\n", #e)
 #define DCAM_INNER(e, logger, action)                                          \
-    EXPECT_INNER(DCAMERR ecode_ = (e),                                         \
-                 !DISFAIL(ecode_),                                             \
+    EXPECT_INNER(DCAMERR result_ = (e),                                        \
+                 !DISFAIL(result_),                                            \
                  action,                                                       \
                  logger,                                                       \
                  "Expression failed:\n\t%s\n\t%s\n",                           \
                  #e,                                                           \
-                 dcam_error_to_string(ecode_))
+                 dcam_error_to_string(result_))
 
 #define DCAM(e) DCAM_INNER(e, ERR, goto Error)
 #define DWRN(e) DCAM_INNER(e, LOG, )

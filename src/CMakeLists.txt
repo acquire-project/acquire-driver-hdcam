@@ -11,7 +11,7 @@ add_library(${tgt} MODULE
         dcam.error.c
         dcam.getset.h
         dcam.getset.c
-        dcam.prelude.h)
+        dcam.prelude.h dcam.driver.c dcam.camera.h)
 target_enable_simd(${tgt})
 target_link_libraries(${tgt}
         hdcam
