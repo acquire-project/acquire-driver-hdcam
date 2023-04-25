@@ -44,6 +44,7 @@ else()
 
     foreach(driver
         acquire-driver-common
+        acquire-driver-hdcam
     )
         add_custom_target(${project}-copy-${driver}-for-tests
             COMMAND ${CMAKE_COMMAND} -E copy
