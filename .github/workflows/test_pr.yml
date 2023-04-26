@@ -26,7 +26,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.PAT }}
           submodules: recursive
 
       - name: Get CMake 3.24
