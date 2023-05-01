@@ -57,7 +57,7 @@ main()
 
         DEVOK(device_manager_select(dm,
                                     DeviceKind_Camera,
-                                    SIZED("C15440-20UP.*"),
+                                    SIZED("Hamamatsu C15440-20UP.*"),
                                     &props.video[0].camera.identifier));
         DEVOK(device_manager_select(dm,
                                     DeviceKind_Storage,

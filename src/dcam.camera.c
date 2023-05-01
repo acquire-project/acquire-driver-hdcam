@@ -1,4 +1,5 @@
 #include "dcam.camera.h"
+#include "device/props/device.h"
 #include "logger.h"
 
 #include "dcam.error.h"
@@ -11,6 +12,7 @@
 #include <dcamapi4.h>
 #include <dcamprop.h>
 
+#include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -158,7 +160,7 @@ Error:
     return 0;
 }
 
-/// Returns first enabled trigger or 0 if none
+/// @return first enabled trigger or 0 if none
 static struct Trigger*
 select_trigger(struct CameraProperties* settings)
 {
@@ -175,47 +177,51 @@ select_trigger(struct CameraProperties* settings)
 static int
 set_input_triggering(HDCAM h, struct CameraProperties* settings)
 {
-    struct Trigger* event = select_trigger(settings);
     int use_software_trigger = 0;
-    if (!event) {
-        // None are enabled
-        DCAM(dcamprop_setvalue(
-          h, DCAM_IDPROP_TRIGGER_MODE, DCAMPROP_TRIGGER_MODE__NORMAL));
-        DCAM(dcamprop_setvalue(
-          h, DCAM_IDPROP_TRIGGERSOURCE, DCAMPROP_TRIGGERSOURCE__INTERNAL));
-    } else {
-        use_software_trigger = (event->line == LINE_SOFTWARE);
-        CHECK(event->kind == Signal_Input);
-        if (event == &settings->input_triggers.acquisition_start) {
-            DCAM(dcamprop_setvalue(
-              h, DCAM_IDPROP_TRIGGER_MODE, DCAMPROP_TRIGGER_MODE__START));
-            DCAM(dcamprop_setvalue(
-              h, DCAM_IDPROP_TRIGGERACTIVE, DCAMPROP_TRIGGERACTIVE__EDGE));
-        } else if (event == &settings->input_triggers.frame_start) {
+    {
+        struct Trigger* event = select_trigger(settings);
+        if (!event) {
+            // None are enabled
             DCAM(dcamprop_setvalue(
               h, DCAM_IDPROP_TRIGGER_MODE, DCAMPROP_TRIGGER_MODE__NORMAL));
             DCAM(dcamprop_setvalue(
-              h, DCAM_IDPROP_TRIGGERACTIVE, DCAMPROP_TRIGGERACTIVE__EDGE));
-        } else if (event == &settings->input_triggers.exposure) {
-            DCAM(dcamprop_setvalue(
-              h, DCAM_IDPROP_TRIGGER_MODE, DCAMPROP_TRIGGER_MODE__NORMAL));
-            DCAM(dcamprop_setvalue(
-              h, DCAM_IDPROP_TRIGGERACTIVE, DCAMPROP_TRIGGERACTIVE__LEVEL));
+              h, DCAM_IDPROP_TRIGGERSOURCE, DCAMPROP_TRIGGERSOURCE__INTERNAL));
         } else {
-            ERR("Tried to set an unsupported input triggering mode.");
+            use_software_trigger = (event->line == LINE_SOFTWARE);
+            CHECK(event->kind == Signal_Input);
+            if (event == &settings->input_triggers.acquisition_start) {
+                DCAM(dcamprop_setvalue(
+                  h, DCAM_IDPROP_TRIGGER_MODE, DCAMPROP_TRIGGER_MODE__START));
+                DCAM(dcamprop_setvalue(
+                  h, DCAM_IDPROP_TRIGGERACTIVE, DCAMPROP_TRIGGERACTIVE__EDGE));
+            } else if (event == &settings->input_triggers.frame_start) {
+                DCAM(dcamprop_setvalue(
+                  h, DCAM_IDPROP_TRIGGER_MODE, DCAMPROP_TRIGGER_MODE__NORMAL));
+                DCAM(dcamprop_setvalue(
+                  h, DCAM_IDPROP_TRIGGERACTIVE, DCAMPROP_TRIGGERACTIVE__EDGE));
+            } else if (event == &settings->input_triggers.exposure) {
+                DCAM(dcamprop_setvalue(
+                  h, DCAM_IDPROP_TRIGGER_MODE, DCAMPROP_TRIGGER_MODE__NORMAL));
+                DCAM(dcamprop_setvalue(
+                  h, DCAM_IDPROP_TRIGGERACTIVE, DCAMPROP_TRIGGERACTIVE__LEVEL));
+            } else {
+                ERR("Tried to set an unsupported input triggering mode.");
+            }
+
+            DCAM(
+              dcamprop_setvalue(h,
+                                DCAM_IDPROP_TRIGGERPOLARITY,
+                                event->edge == TriggerEdge_Falling
+                                  ? DCAMPROP_TRIGGERENABLE_POLARITY__NEGATIVE
+                                  : DCAMPROP_TRIGGERENABLE_POLARITY__POSITIVE));
+
+            DCAM(dcamprop_setvalue(h,
+                                   DCAM_IDPROP_TRIGGERSOURCE,
+                                   use_software_trigger
+                                     ? DCAMPROP_TRIGGERSOURCE__SOFTWARE
+                                     : DCAMPROP_TRIGGERSOURCE__EXTERNAL));
         }
     }
-
-    DCAM(dcamprop_setvalue(h,
-                           DCAM_IDPROP_TRIGGERSOURCE,
-                           use_software_trigger
-                             ? DCAMPROP_TRIGGERSOURCE__SOFTWARE
-                             : DCAMPROP_TRIGGERSOURCE__EXTERNAL));
-    DCAM(dcamprop_setvalue(h,
-                           DCAM_IDPROP_TRIGGERPOLARITY,
-                           event->edge == TriggerEdge_Falling
-                             ? DCAMPROP_TRIGGERENABLE_POLARITY__NEGATIVE
-                             : DCAMPROP_TRIGGERENABLE_POLARITY__POSITIVE));
 
     DCAM(dcamprop_setvalue(
       h, DCAM_IDPROP_TRIGGER_CONNECTOR, DCAMPROP_TRIGGER_CONNECTOR__BNC));
@@ -301,14 +307,143 @@ Error:
     return 0;
 }
 
+static int
+read_prop_capabilities_(struct Property* out,
+                        HDCAM h,
+                        int32_t prop_id,
+                        float unit_conversion,
+                        const char* prop_name)
+{
+    DCAMPROP_ATTR attr = { .cbSize = sizeof(attr),
+                           .iProp = prop_id,
+                           .option = 0 };
+    DCAM(dcamprop_getattr(h, &attr));
+    *out = (struct Property){
+        .low = unit_conversion * (float)attr.valuemin,
+        .high = unit_conversion * (float)attr.valuemax,
+        .writable =
+          (attr.attribute & DCAMPROP_ATTR_WRITABLE) == DCAMPROP_ATTR_WRITABLE,
+    };
+    return 1;
+Error:
+    LOG("Failed to get attributes for property %s", prop_name);
+    return 0;
+}
+
+int
+aq_dcam_get_metadata__inner(const struct Dcam4Camera* self,
+                            struct CameraPropertyMetadata* metadata)
+{
+    int is_ok = 1;
+
+#define READ_PROP_META(meta, prop, unit_conversion)                            \
+    read_prop_capabilities_(meta, self->hdcam, prop, unit_conversion, #prop)
+
+    is_ok &= READ_PROP_META(&metadata->exposure_time_us,
+                            DCAM_IDPROP_EXPOSURETIME,
+                            1e6f /*[usec/sec]*/);
+
+    is_ok &= READ_PROP_META(&metadata->line_interval_us,
+                            DCAM_IDPROP_INTERNAL_LINEINTERVAL,
+                            1e6f /*[usec/sec]*/);
+
+    is_ok &= READ_PROP_META(&metadata->binning, DCAM_IDPROP_BINNING, 1.0f);
+
+    is_ok &= READ_PROP_META(
+      &metadata->readout_direction, DCAM_IDPROP_READOUT_DIRECTION, 1.0f);
+
+    is_ok &=
+      READ_PROP_META(&metadata->offset.x, DCAM_IDPROP_SUBARRAYHPOS, 1.0f);
+    is_ok &=
+      READ_PROP_META(&metadata->offset.y, DCAM_IDPROP_SUBARRAYVPOS, 1.0f);
+    is_ok &=
+      READ_PROP_META(&metadata->shape.x, DCAM_IDPROP_SUBARRAYHSIZE, 1.0f);
+    is_ok &=
+      READ_PROP_META(&metadata->shape.y, DCAM_IDPROP_SUBARRAYVSIZE, 1.0f);
+
+#undef READ_PROP_META
+
+    metadata->supported_pixel_types =
+      (1 << SampleType_u8) | (1 << SampleType_u16);
+
+    // Triggering
+    // Names for trigger lines are taken from Orca Fusion manual
+    metadata->digital_lines =
+      (struct CameraPropertyMetadataDigitalLineMetadata){
+          .line_count = 5,
+          .names = {
+            [LINE_EXT_TRIG] = "Ext.Trig",
+            [LINE_TIMING1] = "Timing 1",
+            [LINE_TIMING2] = "Timing 2",
+            [LINE_TIMING3] = "Timing 3",
+            [LINE_SOFTWARE] = "Software",
+          },
+      };
+    metadata->triggers = (struct CameraPropertiesTriggerMetadata){
+        .acquisition_start = { .input = 1, .output = 0 },
+        .exposure = { .input = 1, .output = 1 },
+        .frame_start = { .input = 1, .output = 1 },
+    };
+    return is_ok;
+}
+
 enum DeviceStatusCode
-aq_dcam_set__inner(struct Camera* self_,
-                   struct CameraProperties* props,
-                   int force)
+aq_dcam_get_metadata(const struct Camera* self_,
+                     struct CameraPropertyMetadata* metadata)
 {
     struct Dcam4Camera* self = containerof(self_, struct Dcam4Camera, camera);
     lock_acquire(&self->lock);
+    int is_ok = aq_dcam_get_metadata__inner(self, metadata);
+    lock_release(&self->lock);
+    return is_ok ? Device_Ok : Device_Err;
+}
+
+static void
+clamp_uint32_t(uint32_t* v, float low_, float high_)
+{
+    const uint32_t low = (uint32_t)low_;
+    const uint32_t high = (uint32_t)high_;
+    if (low > *v)
+        *v = low;
+    else if (*v > high)
+        *v = high;
+}
+
+static void
+clamp_uint8_t(uint8_t* v, float low_, float high_)
+{
+    const uint8_t low = (uint8_t)low_;
+    const uint8_t high = (uint8_t)high_;
+    if (low > *v)
+        *v = low;
+    else if (*v > high)
+        *v = high;
+}
+
+static void
+clamp_float(float* v, float low, float high)
+{
+    if (low > *v)
+        *v = low;
+    else if (*v > high)
+        *v = high;
+}
+
+enum DeviceStatusCode
+aq_dcam_set__inner(struct Dcam4Camera* self,
+                   struct CameraProperties* props,
+                   int force)
+{
     HDCAM hdcam = self->hdcam;
+
+    {
+        struct CameraPropertyMetadata metadata;
+        aq_dcam_get_metadata__inner(self, &metadata);
+#define CLAMP(type, field)                                                     \
+    clamp_##type(&props->field, metadata.field.low, metadata.field.high);
+        CLAMP(uint8_t, binning);
+#undef CLAMP
+    }
 
 #define IS_CHANGED(prop) (force || (self->last_props.prop != props->prop))
 
@@ -339,11 +474,27 @@ aq_dcam_set__inner(struct Camera* self_,
                 value = DCAMPROP_READOUT_DIRECTION__FORWARD;
                 break;
             default:
-                ERR("Unrecognized readout direction value (%d). Using FORWARD.",
+                ERR("Unrecognized readout direction value (%d). Using "
+                    "FORWARD.",
                     props->readout_direction);
                 value = DCAMPROP_READOUT_DIRECTION__FORWARD;
         }
         dcamprop_setvalue(hdcam, DCAM_IDPROP_READOUT_DIRECTION, value);
+    }
+
+    {
+        // Binning changes a bunch of stuff so re-read the capabilities
+        struct CameraPropertyMetadata metadata;
+        aq_dcam_get_metadata__inner(self, &metadata);
+#define CLAMP(type, field)                                                     \
+    clamp_##type(&props->field, metadata.field.low, metadata.field.high);
+        CLAMP(uint32_t, offset.x);
+        CLAMP(uint32_t, offset.y);
+        CLAMP(uint32_t, shape.x);
+        CLAMP(uint32_t, shape.y);
+        CLAMP(float, exposure_time_us);
+        CLAMP(float, line_interval_us);
+#undef CLAMP
     }
 
     // roi
@@ -361,8 +512,8 @@ aq_dcam_set__inner(struct Camera* self_,
     }
 
     // exposure
+    is_ok &= set_readout_speed(hdcam);
     if (IS_CHANGED(exposure_time_us) || IS_CHANGED(line_interval_us)) {
-        is_ok &= set_readout_speed(hdcam);
         is_ok &= prop_write_scaled(f32,
                                    hdcam,
                                    DCAM_IDPROP_INTERNAL_LINEINTERVAL,
@@ -385,14 +536,17 @@ aq_dcam_set__inner(struct Camera* self_,
     if (is_ok)
         self->last_props = *props;
 
-    lock_release(&self->lock);
     return is_ok ? Device_Ok : Device_Err;
 }
 
 enum DeviceStatusCode
 aq_dcam_set(struct Camera* self_, struct CameraProperties* props)
 {
-    return aq_dcam_set__inner(self_, props, 0 /*?force*/);
+    struct Dcam4Camera* self = containerof(self_, struct Dcam4Camera, camera);
+    lock_acquire(&self->lock);
+    enum DeviceStatusCode result = aq_dcam_set__inner(self, props, 0);
+    lock_release(&self->lock);
+    return result;
 }
 
 static struct Trigger*
@@ -628,90 +782,6 @@ aq_dcam_get(const struct Camera* self_, struct CameraProperties* props)
 Error:
     lock_release(&self->lock);
     return Device_Err;
-}
-
-static int
-read_prop_capabilities_(struct Property* out,
-                        HDCAM h,
-                        int32_t prop_id,
-                        float unit_conversion,
-                        const char* prop_name)
-{
-    DCAMPROP_ATTR attr = { .cbSize = sizeof(attr),
-                           .iProp = prop_id,
-                           .option = 0 };
-    DCAM(dcamprop_getattr(h, &attr));
-    *out = (struct Property){
-        .low = unit_conversion * (float)attr.valuemin,
-        .high = unit_conversion * (float)attr.valuemax,
-        .writable =
-          (attr.attribute & DCAMPROP_ATTR_WRITABLE) == DCAMPROP_ATTR_WRITABLE,
-    };
-    return 1;
-Error:
-    LOG("Failed to get attributes for property %s", prop_name);
-    return 0;
-}
-
-enum DeviceStatusCode
-aq_dcam_get_metadata(const struct Camera* self_,
-                     struct CameraPropertyMetadata* metadata)
-{
-    struct Dcam4Camera* self = containerof(self_, struct Dcam4Camera, camera);
-    lock_acquire(&self->lock);
-    int is_ok = 1;
-
-#define READ_PROP_META(meta, prop, unit_conversion)                            \
-    read_prop_capabilities_(meta, self->hdcam, prop, unit_conversion, #prop)
-
-    is_ok &= READ_PROP_META(&metadata->exposure_time_us,
-                            DCAM_IDPROP_EXPOSURETIME,
-                            1e6f /*[usec/sec]*/);
-
-    is_ok &= READ_PROP_META(&metadata->line_interval_us,
-                            DCAM_IDPROP_INTERNAL_LINEINTERVAL,
-                            1e6f /*[usec/sec]*/);
-
-    is_ok &= READ_PROP_META(&metadata->binning, DCAM_IDPROP_BINNING, 1.0f);
-
-    is_ok &= READ_PROP_META(
-      &metadata->readout_direction, DCAM_IDPROP_READOUT_DIRECTION, 1.0f);
-
-    is_ok &=
-      READ_PROP_META(&metadata->offset.x, DCAM_IDPROP_SUBARRAYHPOS, 1.0f);
-    is_ok &=
-      READ_PROP_META(&metadata->offset.y, DCAM_IDPROP_SUBARRAYVPOS, 1.0f);
-    is_ok &=
-      READ_PROP_META(&metadata->shape.x, DCAM_IDPROP_SUBARRAYHSIZE, 1.0f);
-    is_ok &=
-      READ_PROP_META(&metadata->shape.y, DCAM_IDPROP_SUBARRAYVSIZE, 1.0f);
-
-#undef READ_PROP_META
-
-    metadata->supported_pixel_types =
-      (1 << SampleType_u8) | (1 << SampleType_u16);
-
-    // Triggering
-    // Names for trigger lines are taken from Orca Fusion manual
-    metadata->digital_lines =
-      (struct CameraPropertyMetadataDigitalLineMetadata){
-          .line_count = 5,
-          .names = {
-            [LINE_EXT_TRIG] = "Ext.Trig",
-            [LINE_TIMING1] = "Timing 1",
-            [LINE_TIMING2] = "Timing 2",
-            [LINE_TIMING3] = "Timing 3",
-            [LINE_SOFTWARE] = "Software",
-          },
-      };
-    metadata->triggers = (struct CameraPropertiesTriggerMetadata){
-        .acquisition_start = { .input = 1, .output = 0 },
-        .exposure = { .input = 1, .output = 1 },
-        .frame_start = { .input = 1, .output = 1 },
-    };
-
-    lock_release(&self->lock);
-    return is_ok ? Device_Ok : Device_Err;
 }
 
 enum DeviceStatusCode
