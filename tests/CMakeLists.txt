@@ -34,6 +34,7 @@ else ()
                 )
 
         add_test(NAME test-${tgt} COMMAND ${tgt})
+        set_tests_properties(test-${tgt} PROPERTIES LABELS dcam)
     endforeach ()
 
     #
