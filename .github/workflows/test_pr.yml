@@ -28,9 +28,6 @@ jobs:
           git config --global core.longpaths true
         shell: pwsh
 
-      - name: Add DCAMSDK_ROOT_DIR to path
-        run: |
-
       - name: Checkout
         uses: actions/checkout@v3
         with:
