@@ -14,7 +14,7 @@
 #define containerof(P, T, F) ((T*)(((char*)(P)) - offsetof(T, F)))
 
 enum DeviceStatusCode
-aq_dcam_set__inner(struct Camera* self_,
+aq_dcam_set__inner(struct Dcam4Camera* self,
                    struct CameraProperties* props,
                    int force);
 
@@ -51,7 +51,7 @@ aq_dcam_describe__inner(const struct Dcam4Driver* self,
     }
 
     snprintf(ident->name, sizeof(ident->name), "Hamamatsu %s %s", model, sn);
-    ident->device_id = i;
+    ident->device_id = (uint8_t)i;
     return Device_Ok;
 Error:
     return Device_Err;
@@ -179,7 +179,8 @@ aq_dcam_shutdown_(struct Driver* self_)
     struct Dcam4Driver* self = containerof(self_, struct Dcam4Driver, driver);
     lock_acquire(&self->lock);
     for (int i = 0; i < countof(self->cameras); ++i) {
-        camera_close(&self->cameras[i]->camera);
+        if (self->cameras[i])
+            camera_close(&self->cameras[i]->camera);
     }
     DWRN(dcamapi_uninit());
     lock_release(&self->lock);
@@ -305,7 +306,7 @@ reset_driver_and_replace_camera(struct Dcam4Camera* self)
                     &driver->cameras[device_id]->camera.device.identifier,
                     device_id));
 
-            switch (aq_dcam_set__inner(&driver->cameras[device_id]->camera,
+            switch (aq_dcam_set__inner(driver->cameras[device_id],
                                        &saved_props[device_id],
                                        1 /*?force*/)) {
                 case Device_Ok:
