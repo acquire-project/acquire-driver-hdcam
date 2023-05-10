@@ -21,4 +21,6 @@ if(DCAMSDK_ROOT_DIR)
     set_target_properties(${tgt} PROPERTIES
         IMPORTED_LOCATION ${DCAMSDK_ROOT_DIR}/dcamsdk4/lib/win64/dcamapi.lib
     )
+else()
+    message(STATUS "DCAM-SDK NOT FOUND")
 endif()
