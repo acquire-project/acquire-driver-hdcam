@@ -2,6 +2,7 @@
 /// @brief Lists the devices exposed by this driver.
 /// Exercises the device enumeration interface.
 
+#include "device/props/device.h"
 #include "platform.h"
 #include "logger.h"
 #include "device/kit/driver.h"
@@ -47,7 +48,7 @@ main()
 {
     logger_set_reporter(reporter);
     lib lib{};
-    CHECK(lib_open_by_name(&lib, "acquire-driver-common"));
+    CHECK(lib_open_by_name(&lib, "acquire-driver-hdcam"));
     {
         auto init = (init_func_t)lib_load(&lib, "acquire_driver_init_v0");
         auto driver = init(reporter);
@@ -60,6 +61,7 @@ main()
             device_identifier_as_debug_string(buf, sizeof(buf), &id);
             LOG("%d %s", i, buf);
         }
+        CHECK(driver->shutdown(driver) == Device_Ok);
     }
     lib_close(&lib);
     return 0;

@@ -79,34 +79,18 @@ main()
 
     // Select devices
     {
-        const DeviceManager* dm = 0;
-        struct
-        {
-            DeviceKind kind;
-            const char* name;
-            size_t bytes_of_name;
-            DeviceIdentifier* id;
-        } query[] = {
+        const DeviceManager* dm;
 #define SIZED(s) s, sizeof(s) - 1
-            { DeviceKind_Camera,
-              SIZED("C15440-20UP.*"),
-              &props.video[0].camera.identifier },
-            {
-              DeviceKind_Storage,
-              SIZED("Trash"),
-              &props.video[0].storage.identifier,
-            },
-#undef SIZED
-        };
-
         CHECK(dm = acquire_device_manager(runtime));
-        for (int i = 0; i < countof(query); ++i) {
-            DEVOK(device_manager_select(dm,
-                                        query[i].kind,
-                                        query[i].name,
-                                        query[i].bytes_of_name,
-                                        query[i].id));
-        }
+        DEVOK(device_manager_select(dm,
+                                    DeviceKind_Camera,
+                                    SIZED("Hamamatsu C15440-20UP.*"),
+                                    &props.video[0].camera.identifier));
+        DEVOK(device_manager_select(dm,
+                                    DeviceKind_Storage,
+                                    SIZED("Trash"),
+                                    &props.video[0].storage.identifier));
+#undef SIZED
     }
     OK(acquire_configure(runtime, &props));
 
