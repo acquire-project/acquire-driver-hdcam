@@ -175,6 +175,18 @@ select_trigger(struct CameraProperties* settings)
 }
 
 static int
+disable_external_triggering(HDCAM h)
+{
+    DCAM(dcamprop_setvalue(
+      h, DCAM_IDPROP_TRIGGER_MODE, DCAMPROP_TRIGGER_MODE__NORMAL));
+    DCAM(dcamprop_setvalue(
+      h, DCAM_IDPROP_TRIGGERSOURCE, DCAMPROP_TRIGGERSOURCE__INTERNAL));
+    return 1;
+Error:
+    return 0;
+}
+
+static int
 set_input_triggering(HDCAM h, struct CameraProperties* settings)
 {
     int use_software_trigger = 0;
@@ -182,10 +194,7 @@ set_input_triggering(HDCAM h, struct CameraProperties* settings)
         struct Trigger* event = select_trigger(settings);
         if (!event) {
             // None are enabled
-            DCAM(dcamprop_setvalue(
-              h, DCAM_IDPROP_TRIGGER_MODE, DCAMPROP_TRIGGER_MODE__NORMAL));
-            DCAM(dcamprop_setvalue(
-              h, DCAM_IDPROP_TRIGGERSOURCE, DCAMPROP_TRIGGERSOURCE__INTERNAL));
+            CHECK(disable_external_triggering(h));
         } else {
             use_software_trigger = (event->line == LINE_SOFTWARE);
             CHECK(event->kind == Signal_Input);
@@ -878,22 +887,15 @@ aq_dcam_get_frame(struct Camera* self_,
         .eventmask = (int32)DCAMWAIT_CAPEVENT_FRAMEREADY,
         .timeout = (int32)DCAMWAIT_TIMEOUT_INFINITE,
     };
-    lock_acquire(&self->lock);
+    DCAMERR dcamwait_start_result = dcamwait_start(self->wait, &p);
 
-    CHECK(self_->state == DeviceState_Running);
-    TRACE("DCAM device id: %d\tdcam: %p\thwait: %p",
-          (int)self->camera.device.identifier.device_id,
-          self->hdcam,
-          self->wait);
-    {
-        DCAMERR dcamwait_start_result = dcamwait_start(self->wait, &p);
-        if (dcamwait_start_result == DCAMERR_ABORT) {
-            *nbytes = 0;
-            LOG("CAMERA ABORT");
-            return Device_Ok;
-        }
-        DCAM(dcamwait_start_result);
+    lock_acquire(&self->lock);
+    if (dcamwait_start_result == DCAMERR_ABORT) {
+        *nbytes = 0;
+        LOG("CAMERA ABORT");
+        goto Error;
     }
+    DCAM(dcamwait_start_result);
 
     {
         struct image_descriptor d;
