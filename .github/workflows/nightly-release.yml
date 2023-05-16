@@ -41,7 +41,7 @@ jobs:
           arch: amd64_x86
 
       - name: Configure
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release -DCPACK_PACKAGE_VERSION="nightly"
 
       - name: Build
         run: |
