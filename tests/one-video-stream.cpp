@@ -66,13 +66,8 @@ main()
                                     SIZED("tiff") - 1,
                                     &props.video[0].storage.identifier));
 
-        storage_properties_init(&props.video[0].storage.settings,
-                                0,
-                                SIZED("out.tif"),
-                                0,
-                                0,
-                                { 0 },
-                                0);
+        storage_properties_init(
+          &props.video[0].storage.settings, 0, SIZED("out.tif"), 0, 0, { 0 });
 
         OK(acquire_configure(runtime, &props));
 
