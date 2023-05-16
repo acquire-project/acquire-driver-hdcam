@@ -14,6 +14,7 @@ else()
     #
     set(tests
         list-devices
+        abort-finite-acquisition
         dcam-check
         dcam-list-triggers
         dcam-reset-on-fail
