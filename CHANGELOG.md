@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.3](https://github.com/acquire-project/acquire-driver-hdcam/compare/v0.1.2...v0.1.3) - 2023-05-25
+## [0.1.3](https://github.com/acquire-project/acquire-driver-hdcam/compare/v0.1.2...v0.1.3) - 2023-06-01
 
 ### Added
 
