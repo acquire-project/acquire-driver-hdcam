@@ -4,62 +4,13 @@ on:
   push:
     tags:
       - "v*.*.*"
+      - "nightly"
 
 jobs:
-  windows-build:
-    name: "Build on Windows with DCAM SDK"
-    runs-on: [ self-hosted, dcam ]
-
-    permissions:
-      actions: write
-
-    steps:
-      - name: Cancel Previous Runs
-        uses: styfle/cancel-workflow-action@0.10.0
-        with:
-          access_token: ${{ github.token }}
-
-      - name: Enable long paths
-        run: |
-          git config --global core.longpaths true
-        shell: pwsh
-
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: true
-
-      - name: Get CMake 3.24
-        uses: lukka/get-cmake@latest
-        with:
-          useCloudCache: false
-          useLocalCache: true
-          cmakeVersion: 3.24.3
-
-      - name: Install MSVC
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: amd64_x86
-
-      - name: Configure
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
-
-      - name: Build
-        run: |
-          cmake --build ${{github.workspace}}/build --config Release
-          cpack --config ${{github.workspace}}/build/CPackConfig.cmake -C Release -G ZIP
-
-      - uses: actions/upload-artifact@v3
-        with:
-          name: Windows Release binaries
-          path: ${{github.workspace}}/*.zip
-
-  unsupported-build:
-    name: "Build on Mac and Ubuntu"
+  build:
     strategy:
       matrix:
-        platform: [ "ubuntu-latest", "macos-latest" ]
-
+        platform: [ "windows-latest", "ubuntu-latest", "macos-latest" ]
     runs-on: ${{ matrix.platform }}
 
     permissions:
@@ -73,7 +24,8 @@ jobs:
 
       - uses: actions/checkout@v3
         with:
-          submodules: recursive
+          submodules: true
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: CMake
         run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
@@ -83,13 +35,19 @@ jobs:
           cmake --build ${{github.workspace}}/build --config Release
           cpack --config ${{github.workspace}}/build/CPackConfig.cmake -C Release -G ZIP
 
+      - name: Test  # don't release if tests are failing
+        working-directory: ${{github.workspace}}/build
+        run: |
+          ctest -C ${{env.BUILD_TYPE}} -L anyplatform --output-on-failure
+          ctest -C ${{env.BUILD_TYPE}} -L dcam --output-on-failure
+
       - uses: actions/upload-artifact@v3
         with:
-          name: ${{matrix.platform}} Release binaries
+          name: ${{matrix.platform}} binaries
           path: ${{github.workspace}}/*.zip
 
   release:
-    needs: [ windows-build, unsupported-build ]
+    needs: build
     name: "Release"
     runs-on: "ubuntu-latest"
 
@@ -103,9 +61,22 @@ jobs:
         with:
           path: ${{ github.workspace }}/artifacts
 
-      - uses: marvinpinto/action-automatic-releases@latest
+      - name: Tagged release
+        if: ${{ github.ref_name != 'nightly' }}
+        uses: marvinpinto/action-automatic-releases@latest
         with:
           repo_token: ${{ github.token }}
           prerelease: false
+          files: |
+            ${{steps.download.outputs.download-path}}/*/*.zip
+
+      - name: Nightly release
+        if: ${{ github.ref_name == 'nightly' }}
+        uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: ${{ secrets.PAT }}
+          automatic_release_tag: "nightly"
+          prerelease: true
+          title: "Nightly Release"
           files: |
             ${{steps.download.outputs.download-path}}/*/*.zip
