@@ -7,12 +7,71 @@ on:
       - "nightly"
 
 jobs:
-  build:
+  windows-build:
+    name: "Build on Windows with DCAM SDK"
     strategy:
       matrix:
-        platform: [ "windows-latest", "ubuntu-latest", "macos-latest" ]
-    runs-on: ${{ matrix.platform }}
+        build_type: [ Debug, Release ]
 
+    runs-on: [ self-hosted, dcam ]
+
+    permissions:
+      actions: write
+
+    steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.10.0
+        with:
+          access_token: ${{ github.token }}
+
+      - name: Enable long paths
+        run: |
+          git config --global core.longpaths true
+        shell: pwsh
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Get CMake 3.24
+        uses: lukka/get-cmake@latest
+        with:
+          useCloudCache: false
+          useLocalCache: true
+          cmakeVersion: 3.24.3
+
+      - name: Install MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64_x86
+
+      - name: Configure
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.BUILD_TYPE}}
+
+      - name: Build
+        run: |
+          cmake --build ${{github.workspace}}/build --config ${{matrix.build_type}}
+          cpack --config ${{github.workspace}}/build/CPackConfig.cmake -C ${{matrix.build_type}} -G ZIP
+
+      - name: Test  # don't release unless tests pass
+        working-directory: ${{github.workspace}}/build
+        run: |
+          ctest -C ${{env.BUILD_TYPE}} -L anyplatform --output-on-failure
+          ctest -C ${{env.BUILD_TYPE}} -L acquire-driver-hdcam --output-on-failure
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ${{matrix.build_type}} binaries
+          path: ${{github.workspace}}/*.zip
+
+  unsupported-build:
+    name: "Build on Mac and Ubuntu"
+    strategy:
+      matrix:
+        build_type: [ Debug, Release ]
+        platform: [ "ubuntu-latest", "macos-latest" ]
+    runs-on: ${{ matrix.platform }}
     permissions:
       actions: write
 
@@ -24,30 +83,28 @@ jobs:
 
       - uses: actions/checkout@v3
         with:
-          submodules: true
-          ref: ${{ github.event.pull_request.head.sha }}
+          submodules: recursive
 
       - name: CMake
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
 
       - name: Build
         run: |
-          cmake --build ${{github.workspace}}/build --config Release
-          cpack --config ${{github.workspace}}/build/CPackConfig.cmake -C Release -G ZIP
+          cmake --build ${{github.workspace}}/build --config ${{matrix.build_type}}
+          cpack --config ${{github.workspace}}/build/CPackConfig.cmake -C ${{matrix.build_type}} -G ZIP
 
-      - name: Test  # don't release if tests are failing
+      - name: Test  # don't release unless tests pass
         working-directory: ${{github.workspace}}/build
         run: |
           ctest -C ${{env.BUILD_TYPE}} -L anyplatform --output-on-failure
-          ctest -C ${{env.BUILD_TYPE}} -L dcam --output-on-failure
 
       - uses: actions/upload-artifact@v3
         with:
-          name: ${{matrix.platform}} binaries
+          name: ${{matrix.platform}} ${{matrix.build_type}} binaries
           path: ${{github.workspace}}/*.zip
 
   release:
-    needs: build
+    needs: [ windows-build, unsupported-build ]
     name: "Release"
     runs-on: "ubuntu-latest"
 
