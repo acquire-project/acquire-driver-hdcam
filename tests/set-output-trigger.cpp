@@ -1,3 +1,5 @@
+//! Test: Runs through setting up an output trigger on line 1 configured to
+//!       output when exposure starts.
 #include "acquire.h"
 #include "device/hal/device.manager.h"
 #include "device/props/components.h"
