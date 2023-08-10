@@ -71,7 +71,6 @@ setup(AcquireRuntime* runtime)
                                 SIZED("Trash"),
                                 &props.video[0].storage.identifier));
 #undef SIZED
-    // OK(acquire_configure(runtime, &props));
 
     props.video[0].max_frame_count = 10;
     props.video[0].camera.settings.output_triggers.exposure = {
