@@ -280,12 +280,11 @@ set_output_triggering(HDCAM h, struct CameraProperties* settings)
     int used_lines[3] = { 0 };
 
     if (settings->output_triggers.exposure.enable) {
-        CHECK(
-          set_output_trigger__handler(h,
-                                      &settings->output_triggers.exposure,
-                                      used_lines,
-                                      DCAMPROP_OUTPUTTRIGGER_KIND__EXPOSURE,
-                                      DCAMPROP_OUTPUTTRIGGER_SOURCE__EXPOSURE));
+        CHECK(set_output_trigger__handler(h,
+                                          &settings->output_triggers.exposure,
+                                          used_lines,
+                                          DCAMPROP_OUTPUTTRIGGER_KIND__EXPOSURE,
+                                          0 /*NA*/));
     }
 
     if (settings->output_triggers.frame_start.enable) {
@@ -298,22 +297,22 @@ set_output_triggering(HDCAM h, struct CameraProperties* settings)
     }
 
     if (settings->output_triggers.trigger_wait.enable) {
-        CHECK(set_output_trigger__handler(
-          h,
-          &settings->output_triggers.trigger_wait,
-          used_lines,
-          DCAMPROP_OUTPUTTRIGGER_KIND__TRIGGERREADY,
-          DCAMPROP_OUTPUTTRIGGER_SOURCE__READOUTEND));
+        CHECK(
+          set_output_trigger__handler(h,
+                                      &settings->output_triggers.trigger_wait,
+                                      used_lines,
+                                      DCAMPROP_OUTPUTTRIGGER_KIND__TRIGGERREADY,
+                                      0 /*NA*/));
     }
 
     // set unused lines low
     for (int i = 0; i < countof(used_lines); ++i) {
         if (!used_lines[i])
-            array_prop_write(i32,
-                             h,
-                             DCAM_IDPROP_OUTPUTTRIGGER_KIND,
-                             i,
-                             DCAMPROP_OUTPUTTRIGGER_KIND__LOW);
+            CHECK(array_prop_write(i32,
+                                   h,
+                                   DCAM_IDPROP_OUTPUTTRIGGER_KIND,
+                                   i,
+                                   DCAMPROP_OUTPUTTRIGGER_KIND__LOW));
     }
 
     return 1;
