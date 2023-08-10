@@ -75,13 +75,14 @@ setup(AcquireRuntime* runtime)
     props.video[0].max_frame_count = 10;
     props.video[0].camera.settings.output_triggers.exposure = {
         .enable = 1,
-        .line = select_digital_line(runtime, "Timing 1"),
+        .line = 1,
         .kind = Signal_Output,
         .edge = TriggerEdge_Rising
     };
-    // Expect that "Timing 1" is line id 1.
-    CHECK(props.video[0].camera.settings.output_triggers.exposure.line == 1);
     OK(acquire_configure(runtime, &props));
+    // Expect that "Timing 1" is line id 1.
+    // select_digital_line() must be called after setting the camera.
+    CHECK(select_digital_line(runtime, "Timing 1") == 1);
     return 1;
 Error:
     return 0;

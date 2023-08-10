@@ -244,8 +244,7 @@ Error:
     return 0;
 }
 
-/// Side-effects:
-///
+// Sets used_lines[i] to true if line i is used.
 static int
 set_output_trigger__handler(HDCAM h,
                             const struct Trigger* trigger,
