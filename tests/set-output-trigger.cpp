@@ -75,7 +75,7 @@ setup(AcquireRuntime* runtime)
     props.video[0].max_frame_count = 10;
     props.video[0].camera.settings.output_triggers.exposure = {
         .enable = 1,
-        .line = 1, // select_digital_line(runtime, "Timing 1"),
+        .line = select_digital_line(runtime, "Timing 1"),
         .kind = Signal_Output,
         .edge = TriggerEdge_Rising
     };
