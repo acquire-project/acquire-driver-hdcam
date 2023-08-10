@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6](https://github.com/acquire-project/acquire-driver-hdcam/compare/v0.1.5...v0.1.6) - 2023-08-10
+
+- Fixes a bug where the output trigger source property was set when it shouldn't be.
+
+## [0.1.5](https://github.com/acquire-project/acquire-driver-hdcam/compare/v0.1.4...v0.1.5) - 2023-07-28
+
+- Updates to latest acquire-core-libs.
+
 ## [0.1.4](https://github.com/acquire-project/acquire-driver-hdcam/compare/v0.1.3...v0.1.4) - 2023-06-27
 
 ### Changes
@@ -22,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changes
 
-- Updates call to `storage_properties_init` for the new function signature. 
+- Updates call to `storage_properties_init` for the new function signature.
 
 ## [0.1.2](https://github.com/acquire-project/acquire-driver-hdcam/compare/v0.1.1...v0.1.2) - 2023-05-12
 
