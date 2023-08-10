@@ -19,6 +19,7 @@ else()
         dcam-list-triggers
         dcam-reset-on-fail
         one-video-stream
+        set-output-trigger
     )
 
     foreach(name ${tests})

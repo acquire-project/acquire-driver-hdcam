@@ -244,6 +244,8 @@ Error:
     return 0;
 }
 
+/// Side-effects:
+///
 static int
 set_output_trigger__handler(HDCAM h,
                             const struct Trigger* trigger,
@@ -257,12 +259,15 @@ set_output_trigger__handler(HDCAM h,
                          ? DCAMPROP_OUTPUTTRIGGER_POLARITY__NEGATIVE
                          : DCAMPROP_OUTPUTTRIGGER_POLARITY__POSITIVE;
         used_lines[line] = 1;
-        array_prop_write(i32, h, DCAM_IDPROP_OUTPUTTRIGGER_KIND, line, kind);
+        CHECK(
+          array_prop_write(i32, h, DCAM_IDPROP_OUTPUTTRIGGER_KIND, line, kind));
 
-        array_prop_write(
-          i32, h, DCAM_IDPROP_OUTPUTTRIGGER_SOURCE, line, source);
+        if (kind == DCAMPROP_OUTPUTTRIGGER_KIND__PROGRAMABLE) {
+            CHECK(array_prop_write(
+              i32, h, DCAM_IDPROP_OUTPUTTRIGGER_SOURCE, line, source));
+        }
 
-        DCAM(array_prop_write(
+        CHECK(array_prop_write(
           i32, h, DCAM_IDPROP_OUTPUTTRIGGER_POLARITY, line, edge));
     }
     return 1;
@@ -304,11 +309,12 @@ set_output_triggering(HDCAM h, struct CameraProperties* settings)
 
     // set unused lines low
     for (int i = 0; i < countof(used_lines); ++i) {
-        array_prop_write(i32,
-                         h,
-                         DCAM_IDPROP_OUTPUTTRIGGER_KIND,
-                         i,
-                         DCAMPROP_OUTPUTTRIGGER_KIND__LOW);
+        if (!used_lines[i])
+            array_prop_write(i32,
+                             h,
+                             DCAM_IDPROP_OUTPUTTRIGGER_KIND,
+                             i,
+                             DCAMPROP_OUTPUTTRIGGER_KIND__LOW);
     }
 
     return 1;

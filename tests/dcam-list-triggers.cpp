@@ -110,6 +110,14 @@ main()
 
     acquire_get_configuration_metadata(runtime, &metadata);
 
+    printf("Digital Lines\n");
+    {
+        const auto* info = &metadata.video[0].camera.digital_lines;
+        for (int i = 0; i < info->line_count; ++i)
+            printf("\t[%2d] %18s\n", i, info->names[i]);
+    }
+
+    printf("Input Events\n");
     {
         const int n_triggers =
           sizeof(props.video[0].camera.settings.input_triggers) /
@@ -128,14 +136,47 @@ main()
                       ((const struct Trigger*)&props.video[stream_id]
                          .camera.settings.input_triggers) +
                       i_trigger;
-                    printf("\t[%2d] %18s %8s %2d %10s %10s %10s\n",
+                    printf("\t[%2d] %18s %8s %2d %20s %20s\n",
                            i_trigger,
-                           metadata.video[stream_id]
-                             .camera.digital_lines.names[t->line],
+                           t->enable ? metadata.video[stream_id]
+                                         .camera.digital_lines.names[t->line]
+                                     : "",
                            t->enable ? "enabled" : "",
                            t->line,
-                           t->enable ? event_names[i_trigger] : "",
-                           t->enable ? signal_io_kind_to_string(t->kind) : "",
+                           event_names[i_trigger],
+                           t->enable ? trigger_edge_to_string(t->edge) : "");
+                }
+            }
+        }
+    }
+
+    printf("Output Events\n");
+    {
+        const int n_triggers =
+          sizeof(props.video[0].camera.settings.output_triggers) /
+          sizeof(Trigger);
+        const char* event_names[] = {
+            "Exposure",
+            "FrameStart",
+            "TriggerWait",
+        };
+        for (int stream_id = 0; stream_id < countof(props.video); ++stream_id) {
+            if (props.video[stream_id].camera.identifier.kind !=
+                DeviceKind_None) {
+                printf("Video %d\n", stream_id);
+                for (int i_trigger = 0; i_trigger < n_triggers; ++i_trigger) {
+                    const Trigger* t =
+                      ((const struct Trigger*)&props.video[stream_id]
+                         .camera.settings.output_triggers) +
+                      i_trigger;
+                    printf("\t[%2d] %18s %8s %2d %20s %20s\n",
+                           i_trigger,
+                           t->enable ? metadata.video[stream_id]
+                                         .camera.digital_lines.names[t->line]
+                                     : "",
+                           t->enable ? "enabled" : "",
+                           t->line,
+                           event_names[i_trigger],
                            t->enable ? trigger_edge_to_string(t->edge) : "");
                 }
             }
