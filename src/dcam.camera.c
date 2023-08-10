@@ -244,6 +244,7 @@ Error:
     return 0;
 }
 
+// Sets used_lines[i] to true if line i is used.
 static int
 set_output_trigger__handler(HDCAM h,
                             const struct Trigger* trigger,
@@ -257,12 +258,15 @@ set_output_trigger__handler(HDCAM h,
                          ? DCAMPROP_OUTPUTTRIGGER_POLARITY__NEGATIVE
                          : DCAMPROP_OUTPUTTRIGGER_POLARITY__POSITIVE;
         used_lines[line] = 1;
-        array_prop_write(i32, h, DCAM_IDPROP_OUTPUTTRIGGER_KIND, line, kind);
+        CHECK(
+          array_prop_write(i32, h, DCAM_IDPROP_OUTPUTTRIGGER_KIND, line, kind));
 
-        array_prop_write(
-          i32, h, DCAM_IDPROP_OUTPUTTRIGGER_SOURCE, line, source);
+        if (kind == DCAMPROP_OUTPUTTRIGGER_KIND__PROGRAMABLE) {
+            CHECK(array_prop_write(
+              i32, h, DCAM_IDPROP_OUTPUTTRIGGER_SOURCE, line, source));
+        }
 
-        DCAM(array_prop_write(
+        CHECK(array_prop_write(
           i32, h, DCAM_IDPROP_OUTPUTTRIGGER_POLARITY, line, edge));
     }
     return 1;
@@ -276,12 +280,11 @@ set_output_triggering(HDCAM h, struct CameraProperties* settings)
     int used_lines[3] = { 0 };
 
     if (settings->output_triggers.exposure.enable) {
-        CHECK(
-          set_output_trigger__handler(h,
-                                      &settings->output_triggers.exposure,
-                                      used_lines,
-                                      DCAMPROP_OUTPUTTRIGGER_KIND__EXPOSURE,
-                                      DCAMPROP_OUTPUTTRIGGER_SOURCE__EXPOSURE));
+        CHECK(set_output_trigger__handler(h,
+                                          &settings->output_triggers.exposure,
+                                          used_lines,
+                                          DCAMPROP_OUTPUTTRIGGER_KIND__EXPOSURE,
+                                          0 /*NA*/));
     }
 
     if (settings->output_triggers.frame_start.enable) {
@@ -294,21 +297,22 @@ set_output_triggering(HDCAM h, struct CameraProperties* settings)
     }
 
     if (settings->output_triggers.trigger_wait.enable) {
-        CHECK(set_output_trigger__handler(
-          h,
-          &settings->output_triggers.trigger_wait,
-          used_lines,
-          DCAMPROP_OUTPUTTRIGGER_KIND__TRIGGERREADY,
-          DCAMPROP_OUTPUTTRIGGER_SOURCE__READOUTEND));
+        CHECK(
+          set_output_trigger__handler(h,
+                                      &settings->output_triggers.trigger_wait,
+                                      used_lines,
+                                      DCAMPROP_OUTPUTTRIGGER_KIND__TRIGGERREADY,
+                                      0 /*NA*/));
     }
 
     // set unused lines low
     for (int i = 0; i < countof(used_lines); ++i) {
-        array_prop_write(i32,
-                         h,
-                         DCAM_IDPROP_OUTPUTTRIGGER_KIND,
-                         i,
-                         DCAMPROP_OUTPUTTRIGGER_KIND__LOW);
+        if (!used_lines[i])
+            CHECK(array_prop_write(i32,
+                                   h,
+                                   DCAM_IDPROP_OUTPUTTRIGGER_KIND,
+                                   i,
+                                   DCAMPROP_OUTPUTTRIGGER_KIND__LOW));
     }
 
     return 1;
