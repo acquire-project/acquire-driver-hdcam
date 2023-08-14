@@ -74,7 +74,7 @@ setup(AcquireRuntime* runtime)
 
     ASSERT_EQ(int, "%d", props.video[0].camera.settings.shape.x, 1700);
     ASSERT_EQ(int, "%d", props.video[0].camera.settings.shape.y, 512);
-    ASSERT_EQ(int, "%d", props.video[0].camera.settings.offset.x, 804);
+    ASSERT_EQ(int, "%d", props.video[0].camera.settings.offset.x, 304);
     ASSERT_EQ(int, "%d", props.video[0].camera.settings.offset.y, 896);
     return 1;
 Error:
