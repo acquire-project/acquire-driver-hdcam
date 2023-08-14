@@ -55,12 +55,6 @@ prop_write_u32(HDCAM hdcam,
     *value = (uint32_t)v;
     return 1;
 Error:
-    char buf[256] = { 0 };
-    DCAMDEV_STRING param = { .size = sizeof(param),
-                             .iString = ecode,
-                             .text = buf,
-                             .textbytes = sizeof(buf) };
-    dcamdev_getstring(hdcam, &param);
     LOG("Failed to write %s. %s", prop_name, buf);
     return 0;
 }
