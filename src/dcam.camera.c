@@ -527,10 +527,6 @@ aq_dcam_set__inner(struct Dcam4Camera* self,
           prop_write(u32, hdcam, DCAM_IDPROP_SUBARRAYVPOS, &props->offset.y);
         is_ok &=
           prop_write(u32, hdcam, DCAM_IDPROP_SUBARRAYHPOS, &props->offset.x);
-
-        is_ok &= (dcamprop_setvalue(hdcam,
-                                    DCAM_IDPROP_SUBARRAYMODE,
-                                    DCAMPROP_MODE__ON) == DCAMERR_SUCCESS);
     }
 
     // exposure
