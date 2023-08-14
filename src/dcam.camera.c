@@ -1,5 +1,6 @@
 #include "dcam.camera.h"
 #include "device/props/device.h"
+#include "device/props/metadata.h"
 #include "logger.h"
 
 #include "dcam.error.h"
@@ -513,15 +514,23 @@ aq_dcam_set__inner(struct Dcam4Camera* self,
     // roi
     if (IS_CHANGED(offset.x) || IS_CHANGED(offset.y) || IS_CHANGED(shape.x) ||
         IS_CHANGED(shape.y)) {
-        dcamprop_setvalue(hdcam, DCAM_IDPROP_SUBARRAYMODE, DCAMPROP_MODE__ON);
-        is_ok &=
-          prop_write(u32, hdcam, DCAM_IDPROP_SUBARRAYHPOS, &props->offset.x);
-        is_ok &=
-          prop_write(u32, hdcam, DCAM_IDPROP_SUBARRAYVPOS, &props->offset.y);
+        is_ok &= (dcamprop_setvalue(hdcam,
+                                    DCAM_IDPROP_SUBARRAYMODE,
+                                    DCAMPROP_MODE__ON) == DCAMERR_SUCCESS);
+
         is_ok &=
           prop_write(u32, hdcam, DCAM_IDPROP_SUBARRAYHSIZE, &props->shape.x);
         is_ok &=
           prop_write(u32, hdcam, DCAM_IDPROP_SUBARRAYVSIZE, &props->shape.y);
+
+        is_ok &=
+          prop_write(u32, hdcam, DCAM_IDPROP_SUBARRAYVPOS, &props->offset.y);
+        is_ok &=
+          prop_write(u32, hdcam, DCAM_IDPROP_SUBARRAYHPOS, &props->offset.x);
+
+        is_ok &= (dcamprop_setvalue(hdcam,
+                                    DCAM_IDPROP_SUBARRAYMODE,
+                                    DCAMPROP_MODE__ON) == DCAMERR_SUCCESS);
     }
 
     // exposure

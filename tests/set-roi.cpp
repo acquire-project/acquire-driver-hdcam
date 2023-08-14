@@ -9,15 +9,25 @@
 #define L (aq_logger)
 #define LOG(...) L(0, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__)
 #define ERR(...) L(1, __FILE__, __LINE__, __FUNCTION__, __VA_ARGS__)
-#define CHECK(e)                                                               \
+#define EXPECT(e, ...)                                                         \
     do {                                                                       \
         if (!(e)) {                                                            \
-            ERR("Expression evaluated as false: " #e);                         \
+            ERR(__VA_ARGS__);                                                  \
             goto Error;                                                        \
         }                                                                      \
     } while (0)
+#define CHECK(e) EXPECT(e, "Expression evaluated as false: %s", #e)
 #define DEVOK(e) CHECK(Device_Ok == (e))
 #define OK(e) CHECK(AcquireStatus_Ok == (e))
+
+/// Check that a==b
+/// example: `ASSERT_EQ(int,"%d",42,meaning_of_life())`
+#define ASSERT_EQ(T, fmt, a, b)                                                \
+    do {                                                                       \
+        T a_ = (T)(a);                                                         \
+        T b_ = (T)(b);                                                         \
+        EXPECT(a_ == b_, "Expected %s==%s but " fmt "!=" fmt, #a, #b, a_, b_); \
+    } while (0)
 
 #define countof(e) (sizeof(e) / sizeof(*(e)))
 
@@ -58,13 +68,14 @@ setup(AcquireRuntime* runtime)
 
     props.video[0].max_frame_count = 10;
     props.video[0].camera.settings.shape = { .x = 1700, .y = 512 };
-    props.video[0].camera.settings.offset = { .x = 302, .y = 896 };
+    props.video[0].camera.settings.offset = { .x = 304, .y = 896 };
     OK(acquire_configure(runtime, &props));
     // Expect that the roi is what we intended.
-    CHECK(props.video[0].camera.settings.shape.x == 1700);
-    CHECK(props.video[0].camera.settings.shape.y == 512);
-    CHECK(props.video[0].camera.settings.offset.x == 302);
-    CHECK(props.video[0].camera.settings.offset.y == 896);
+
+    ASSERT_EQ(int, "%d", props.video[0].camera.settings.shape.x, 1700);
+    ASSERT_EQ(int, "%d", props.video[0].camera.settings.shape.y, 512);
+    ASSERT_EQ(int, "%d", props.video[0].camera.settings.offset.x, 304);
+    ASSERT_EQ(int, "%d", props.video[0].camera.settings.offset.y, 896);
     return 1;
 Error:
     return 0;
