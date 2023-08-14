@@ -366,13 +366,13 @@ aq_dcam_get_metadata__inner(const struct Dcam4Camera* self,
       &metadata->readout_direction, DCAM_IDPROP_READOUT_DIRECTION, 1.0f);
 
     is_ok &=
-      READ_PROP_META(&metadata->offset.x, DCAM_IDPROP_SUBARRAYHPOS, 1.0f);
-    is_ok &=
-      READ_PROP_META(&metadata->offset.y, DCAM_IDPROP_SUBARRAYVPOS, 1.0f);
-    is_ok &=
       READ_PROP_META(&metadata->shape.x, DCAM_IDPROP_SUBARRAYHSIZE, 1.0f);
     is_ok &=
       READ_PROP_META(&metadata->shape.y, DCAM_IDPROP_SUBARRAYVSIZE, 1.0f);
+    is_ok &=
+      READ_PROP_META(&metadata->offset.x, DCAM_IDPROP_SUBARRAYHPOS, 1.0f);
+    is_ok &=
+      READ_PROP_META(&metadata->offset.y, DCAM_IDPROP_SUBARRAYVPOS, 1.0f);
 
 #undef READ_PROP_META
 
