@@ -55,7 +55,7 @@ prop_write_u32(HDCAM hdcam,
     *value = (uint32_t)v;
     return 1;
 Error:
-    LOG("Failed to write %s. %s", prop_name, buf);
+    LOG("Failed to write %s.", prop_name);
     return 0;
 }
 
