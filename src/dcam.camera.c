@@ -1,5 +1,6 @@
 #include "dcam.camera.h"
 #include "device/props/device.h"
+#include "device/props/metadata.h"
 #include "logger.h"
 
 #include "dcam.error.h"
@@ -366,13 +367,13 @@ aq_dcam_get_metadata__inner(const struct Dcam4Camera* self,
       &metadata->readout_direction, DCAM_IDPROP_READOUT_DIRECTION, 1.0f);
 
     is_ok &=
-      READ_PROP_META(&metadata->offset.x, DCAM_IDPROP_SUBARRAYHPOS, 1.0f);
-    is_ok &=
-      READ_PROP_META(&metadata->offset.y, DCAM_IDPROP_SUBARRAYVPOS, 1.0f);
-    is_ok &=
       READ_PROP_META(&metadata->shape.x, DCAM_IDPROP_SUBARRAYHSIZE, 1.0f);
     is_ok &=
       READ_PROP_META(&metadata->shape.y, DCAM_IDPROP_SUBARRAYVSIZE, 1.0f);
+    is_ok &=
+      READ_PROP_META(&metadata->offset.x, DCAM_IDPROP_SUBARRAYHPOS, 1.0f);
+    is_ok &=
+      READ_PROP_META(&metadata->offset.y, DCAM_IDPROP_SUBARRAYVPOS, 1.0f);
 
 #undef READ_PROP_META
 
@@ -462,6 +463,11 @@ aq_dcam_set__inner(struct Dcam4Camera* self,
 
     int is_ok = 1;
 
+    // Set readout speed and mode.
+    // It's important to do this first as it effects what settings are valid
+    // for downstream parameters (e.g. subarray, and exposure)
+    is_ok &= set_readout_speed(hdcam);
+
     // pixel type
     if (IS_CHANGED(pixel_type)) {
         is_ok &= set_sample_type(hdcam, &props->pixel_type);
@@ -513,19 +519,28 @@ aq_dcam_set__inner(struct Dcam4Camera* self,
     // roi
     if (IS_CHANGED(offset.x) || IS_CHANGED(offset.y) || IS_CHANGED(shape.x) ||
         IS_CHANGED(shape.y)) {
-        dcamprop_setvalue(hdcam, DCAM_IDPROP_SUBARRAYMODE, DCAMPROP_MODE__ON);
-        is_ok &=
-          prop_write(u32, hdcam, DCAM_IDPROP_SUBARRAYHPOS, &props->offset.x);
-        is_ok &=
-          prop_write(u32, hdcam, DCAM_IDPROP_SUBARRAYVPOS, &props->offset.y);
+        is_ok &= (dcamprop_setvalue(hdcam,
+                                    DCAM_IDPROP_SUBARRAYMODE,
+                                    DCAMPROP_MODE__ON) == DCAMERR_SUCCESS);
+
+        // temporarily set offset to (0,0) so we're free to change the shape
+        is_ok &= dcamprop_setvalue(hdcam, DCAM_IDPROP_SUBARRAYVPOS, 0.0f) ==
+                 DCAMERR_SUCCESS;
+        is_ok &= dcamprop_setvalue(hdcam, DCAM_IDPROP_SUBARRAYHPOS, 0.0f) ==
+                 DCAMERR_SUCCESS;
+
         is_ok &=
           prop_write(u32, hdcam, DCAM_IDPROP_SUBARRAYHSIZE, &props->shape.x);
         is_ok &=
           prop_write(u32, hdcam, DCAM_IDPROP_SUBARRAYVSIZE, &props->shape.y);
+
+        is_ok &=
+          prop_write(u32, hdcam, DCAM_IDPROP_SUBARRAYVPOS, &props->offset.y);
+        is_ok &=
+          prop_write(u32, hdcam, DCAM_IDPROP_SUBARRAYHPOS, &props->offset.x);
     }
 
     // exposure
-    is_ok &= set_readout_speed(hdcam);
     if (IS_CHANGED(exposure_time_us) || IS_CHANGED(line_interval_us)) {
         is_ok &= prop_write_scaled(f32,
                                    hdcam,

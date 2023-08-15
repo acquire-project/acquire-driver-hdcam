@@ -50,11 +50,12 @@ prop_write_u32(HDCAM hdcam,
                const char* prop_name)
 {
     double v = *value;
-    DCAM(dcamprop_setgetvalue(hdcam, prop_id, &v, 0));
+    DCAMERR ecode;
+    DCAM(ecode = dcamprop_setgetvalue(hdcam, prop_id, &v, 0));
     *value = (uint32_t)v;
     return 1;
 Error:
-    LOG("Failed to write %s", prop_name);
+    LOG("Failed to write %s.", prop_name);
     return 0;
 }
 

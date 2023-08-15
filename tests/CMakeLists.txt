@@ -22,6 +22,7 @@ else()
         dcam-reset-on-fail
         one-video-stream
         set-output-trigger
+        set-roi
     )
 
     foreach(name ${tests})
