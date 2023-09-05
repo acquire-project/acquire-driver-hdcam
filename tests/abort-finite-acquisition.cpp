@@ -56,9 +56,36 @@ monitor_proc(void*)
 }
 
 int
+camera_select(const DeviceManager* dm, AcquireProperties* props)
+{
+    try {
+        CHECK(dm);
+        CHECK(props);
+
+        CHECK(Device_Ok ==
+                device_manager_select(dm,
+                                      DeviceKind_Camera,
+                                      SIZED("Hamamatsu C15440-20UP.*"),
+                                      &props->video[0].camera.identifier) ||
+              Device_Ok ==
+                device_manager_select(dm,
+                                      DeviceKind_Camera,
+                                      SIZED("Hamamatsu C13440-20C.*"),
+                                      &props->video[0].camera.identifier));
+
+        return 1;
+    } catch (const std::exception& e) {
+        ERR("Exception: %s", e.what());
+    } catch (...) {
+        ERR("Exception: (unknown)");
+    }
+
+    return 0;
+}
+
+int
 main()
 {
-
     auto runtime = acquire_init(reporter);
     try {
         auto dm = acquire_device_manager(runtime);
@@ -68,10 +95,7 @@ main()
         AcquireProperties props = {};
         OK(acquire_get_configuration(runtime, &props));
 
-        DEVOK(device_manager_select(dm,
-                                    DeviceKind_Camera,
-                                    SIZED("hamamatsu.*") - 1,
-                                    &props.video[0].camera.identifier));
+        CHECK(camera_select(dm, &props));
         DEVOK(device_manager_select(dm,
                                     DeviceKind_Storage,
                                     SIZED("trash") - 1,
