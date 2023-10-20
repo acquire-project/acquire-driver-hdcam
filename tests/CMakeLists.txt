@@ -16,11 +16,12 @@ else()
     #
     set(tests
         list-devices
+        fusion-one-video-stream
+        flash-one-video-stream
         abort-finite-acquisition
         dcam-check
         dcam-list-triggers
         dcam-reset-on-fail
-        one-video-stream
         set-output-trigger
         set-roi
     )

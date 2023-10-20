@@ -17,7 +17,6 @@
 #define DEVOK(e) CHECK(Device_Ok == (e))
 #define OK(e) CHECK(AcquireStatus_Ok == (e))
 
-#define SIZED(s) s, sizeof(s) - 1
 #define countof(e) (sizeof(e) / sizeof(*(e)))
 
 void
@@ -68,31 +67,6 @@ trigger_edge_to_string(TriggerEdge v)
 #undef CASE
 
 int
-camera_select(const DeviceManager* dm, AcquireProperties* props)
-{
-    int ecode = 1;
-
-    CHECK(dm);
-    CHECK(props);
-
-    CHECK(
-      Device_Ok == device_manager_select(dm,
-                                         DeviceKind_Camera,
-                                         SIZED("Hamamatsu C15440-20UP.*"),
-                                         &props->video[0].camera.identifier) ||
-      Device_Ok == device_manager_select(dm,
-                                         DeviceKind_Camera,
-                                         SIZED("Hamamatsu C13440-20C.*"),
-                                         &props->video[0].camera.identifier));
-
-Finalize:
-    return ecode;
-Error:
-    ecode = 0;
-    goto Finalize;
-}
-
-int
 main()
 {
     int ecode = 1;
@@ -106,13 +80,17 @@ main()
     // Select devices
     {
         const DeviceManager* dm;
+#define SIZED(s) s, sizeof(s) - 1
         CHECK(dm = acquire_device_manager(runtime));
-
-        CHECK(camera_select(dm, &props));
+        DEVOK(device_manager_select(dm,
+                                    DeviceKind_Camera,
+                                    SIZED("Hamamatsu C15440-20UP.*"),
+                                    &props.video[0].camera.identifier));
         DEVOK(device_manager_select(dm,
                                     DeviceKind_Storage,
                                     SIZED("Trash"),
                                     &props.video[0].storage.identifier));
+#undef SIZED
     }
     OK(acquire_configure(runtime, &props));
 

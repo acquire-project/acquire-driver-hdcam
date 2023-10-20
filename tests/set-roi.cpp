@@ -29,7 +29,6 @@
         EXPECT(a_ == b_, "Expected %s==%s but " fmt "!=" fmt, #a, #b, a_, b_); \
     } while (0)
 
-#define SIZED(s) s, sizeof(s) - 1
 #define countof(e) (sizeof(e) / sizeof(*(e)))
 
 void
@@ -49,31 +48,6 @@ reporter(int is_error,
 }
 
 int
-camera_select(const DeviceManager* dm, AcquireProperties* props)
-{
-    int ecode = 1;
-
-    CHECK(dm);
-    CHECK(props);
-
-    CHECK(
-      Device_Ok == device_manager_select(dm,
-                                         DeviceKind_Camera,
-                                         SIZED("Hamamatsu C15440-20UP.*"),
-                                         &props->video[0].camera.identifier) ||
-      Device_Ok == device_manager_select(dm,
-                                         DeviceKind_Camera,
-                                         SIZED("Hamamatsu C13440-20C.*"),
-                                         &props->video[0].camera.identifier));
-
-Finalize:
-    return ecode;
-Error:
-    ecode = 0;
-    goto Finalize;
-}
-
-int
 setup(AcquireRuntime* runtime)
 {
     AcquireProperties props = {};
@@ -81,11 +55,16 @@ setup(AcquireRuntime* runtime)
     const DeviceManager* dm = 0;
     CHECK(dm = acquire_device_manager(runtime));
 
-    CHECK(camera_select(dm, &props));
+#define SIZED(s) s, sizeof(s) - 1
+    DEVOK(device_manager_select(dm,
+                                DeviceKind_Camera,
+                                SIZED("Hamamatsu C15440-20UP.*"),
+                                &props.video[0].camera.identifier));
     DEVOK(device_manager_select(dm,
                                 DeviceKind_Storage,
                                 SIZED("Trash"),
                                 &props.video[0].storage.identifier));
+#undef SIZED
 
     props.video[0].max_frame_count = 10;
     props.video[0].camera.settings.shape = { .x = 1700, .y = 512 };

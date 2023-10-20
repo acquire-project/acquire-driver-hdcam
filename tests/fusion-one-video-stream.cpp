@@ -1,6 +1,5 @@
 #include "acquire.h"
 #include "device/hal/device.manager.h"
-#include "device/props/device.h"
 #include "platform.h"
 #include "logger.h"
 
@@ -45,16 +44,6 @@ reporter(int is_error,
 #define DEVOK(e) CHECK(Device_Ok == (e))
 #define OK(e) CHECK(AcquireStatus_Ok == (e))
 
-void
-monitor_proc(void*)
-{
-    struct clock clock;
-    clock_init(&clock);
-    clock_sleep_ms(&clock, 20000);
-    ERR("ABORT - TIMEOUT");
-    abort();
-}
-
 int
 main()
 {
@@ -70,12 +59,16 @@ main()
 
         DEVOK(device_manager_select(dm,
                                     DeviceKind_Camera,
-                                    SIZED("hamamatsu.*") - 1,
+                                    SIZED("Hamamatsu C15440-20UP.*") - 1,
                                     &props.video[0].camera.identifier));
         DEVOK(device_manager_select(dm,
                                     DeviceKind_Storage,
-                                    SIZED("trash") - 1,
+                                    SIZED("tiff") - 1,
                                     &props.video[0].storage.identifier));
+
+        storage_properties_init(
+          &props.video[0].storage.settings, 0, SIZED("out.tif"), 0, 0, { 0 });
+
         OK(acquire_configure(runtime, &props));
 
         AcquirePropertyMetadata metadata = { 0 };
@@ -89,22 +82,72 @@ main()
         };
         props.video[0].camera.settings.exposure_time_us = 1e4;
         props.video[0].max_frame_count = 10;
-        props.video[0].camera.settings.input_triggers.frame_start.line = 0;
-        props.video[0].camera.settings.input_triggers.frame_start.enable = 1;
 
         OK(acquire_configure(runtime, &props));
+
+        CHECK(props.video[0]
+                .camera.settings.input_triggers.acquisition_start.enable == 0);
         CHECK(
           props.video[0].camera.settings.input_triggers.frame_start.enable ==
-          1);
-        OK(acquire_start(runtime));
+          0);
+        CHECK(props.video[0].camera.settings.input_triggers.exposure.enable ==
+              0);
 
-        struct thread monitor;
-        thread_init(&monitor);
-        thread_create(&monitor, monitor_proc, 0);
-        clock_sleep_ms(0, 1000);
-        OK(acquire_abort(runtime));
+        const auto next = [](VideoFrame* cur) -> VideoFrame* {
+            return (VideoFrame*)(((uint8_t*)cur) + cur->bytes_of_frame);
+        };
+
+        const auto consumed_bytes = [](const VideoFrame* const cur,
+                                       const VideoFrame* const end) -> size_t {
+            return (uint8_t*)end - (uint8_t*)cur;
+        };
+
+        struct clock clock
+        {};
+        // expected time to acquire frames + 100%
+        static double time_limit_ms =
+          (props.video[0].max_frame_count / 6.0) * 1000.0 * 2.0;
+        clock_init(&clock);
+        clock_shift_ms(&clock, time_limit_ms);
+        OK(acquire_start(runtime));
+        {
+            uint64_t nframes = 0;
+            while (nframes < props.video[0].max_frame_count) {
+                struct clock throttle
+                {};
+                clock_init(&throttle);
+                EXPECT(clock_cmp_now(&clock) < 0,
+                       "Timeout at %f ms",
+                       clock_toc_ms(&clock) + time_limit_ms);
+                VideoFrame *beg, *end, *cur;
+                OK(acquire_map_read(runtime, 0, &beg, &end));
+                for (cur = beg; cur < end; cur = next(cur)) {
+                    LOG("stream %d counting frame w id %d", 0, cur->frame_id);
+                    CHECK(cur->shape.dims.width ==
+                          props.video[0].camera.settings.shape.x);
+                    CHECK(cur->shape.dims.height ==
+                          props.video[0].camera.settings.shape.y);
+                    ++nframes;
+                }
+                {
+                    uint32_t n = (uint32_t)consumed_bytes(beg, end);
+                    OK(acquire_unmap_read(runtime, 0, n));
+                    if (n)
+                        LOG("stream %d consumed bytes %d", 0, n);
+                }
+                clock_sleep_ms(&throttle, 100.0f);
+
+                LOG("stream %d nframes %d. remaining time %f s",
+                    0,
+                    nframes,
+                    -1e-3 * clock_toc_ms(&clock));
+            }
+
+            CHECK(nframes == props.video[0].max_frame_count);
+        }
+
+        OK(acquire_stop(runtime));
         OK(acquire_shutdown(runtime));
-        LOG("OK. Done.");
         return 0;
     } catch (const std::exception& e) {
         ERR("Exception: %s", e.what());
