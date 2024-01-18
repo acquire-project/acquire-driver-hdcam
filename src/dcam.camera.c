@@ -895,7 +895,7 @@ aq_dcam_fire_software_trigger(struct Camera* self_)
 
     if (trigger_source != DCAMPROP_TRIGGERSOURCE__SOFTWARE) {
 
-        // Force a software trigger, by temporarily disabling external
+        // Force a software trigger by temporarily disabling external
         // triggering, firing a software trigger, and re-enabling the
         // external trigger.
 
