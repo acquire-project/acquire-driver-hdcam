@@ -888,7 +888,28 @@ enum DeviceStatusCode
 aq_dcam_fire_software_trigger(struct Camera* self_)
 {
     struct Dcam4Camera* self = containerof(self_, struct Dcam4Camera, camera);
+
+    const HDCAM h = self->hdcam;
+    int trigger_source;
+    DCAM(prop_read(i32, h, DCAM_IDPROP_TRIGGERSOURCE, &trigger_source));
+
+    if (trigger_source != DCAMPROP_TRIGGERSOURCE__SOFTWARE) {
+
+        // Force a software trigger, by temporarily disabling external
+        // triggering, firing a software trigger, and re-enabling the
+        // external trigger.
+
+        DCAM(dcamprop_setvalue(
+          h, DCAM_IDPROP_TRIGGERSOURCE, DCAMPROP_TRIGGERSOURCE__SOFTWARE));
+    }
+
     DCAM(dcamcap_firetrigger(self->hdcam, 0));
+
+    if (trigger_source != DCAMPROP_TRIGGERSOURCE__SOFTWARE) {
+        // restore
+        DCAM(dcamprop_setvalue(h, DCAM_IDPROP_TRIGGERSOURCE, trigger_source));
+    }
+
     return Device_Ok;
 Error:
     return Device_Err;
