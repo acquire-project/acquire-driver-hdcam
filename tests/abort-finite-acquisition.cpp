@@ -89,7 +89,8 @@ main()
         };
         props.video[0].camera.settings.exposure_time_us = 1e4;
         props.video[0].max_frame_count = 10;
-        props.video[0].camera.settings.input_triggers.frame_start.line = 0;
+        props.video[0].camera.settings.input_triggers.frame_start.line =
+          0; // Ext. Trig
         props.video[0].camera.settings.input_triggers.frame_start.enable = 1;
 
         OK(acquire_configure(runtime, &props));
