@@ -16,8 +16,9 @@ else()
     #
     set(tests
         list-devices
-        fusion-one-video-stream
-        flash-one-video-stream
+        orca-fusion-one-video-stream
+        orca-flash-one-video-stream
+        orca-flash-check
         abort-finite-acquisition
         dcam-check
         dcam-list-triggers
