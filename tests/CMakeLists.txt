@@ -23,6 +23,7 @@ else()
         one-video-stream
         set-output-trigger
         set-roi
+        unit-tests
     )
 
     foreach(name ${tests})
