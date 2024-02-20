@@ -243,7 +243,7 @@ reset_driver_and_replace_camera(struct Dcam4Camera* self)
 
     // try to stop all the associated cameras
     for (int i = 0; i < ncameras; ++i) {
-        camera_stop(&driver->cameras[i]->camera);
+        CHECK(Device_Ok == camera_stop(&driver->cameras[i]->camera));
     }
 
     // save properties
@@ -327,7 +327,7 @@ reset_driver_and_replace_camera(struct Dcam4Camera* self)
                          driver->cameras[i]->camera.device.identifier.name,
                          sizeof(self_name))) {
             *self = *driver->cameras[i];
-            return driver->cameras[i];
+            break;
         }
     }
     lock_release(&driver->lock);
