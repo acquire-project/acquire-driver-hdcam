@@ -16,11 +16,13 @@ else()
     #
     set(tests
         list-devices
+        orca-fusion-one-video-stream
+        orca-flash-one-video-stream
+        orca-flash-check
         abort-finite-acquisition
         dcam-check
         dcam-list-triggers
         dcam-reset-on-fail
-        one-video-stream
         set-output-trigger
         set-roi
     )

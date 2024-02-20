@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Driver builds as an OSX universal binary.
 
+### Added
+
+- Support for ORCA-Flash4.0 V3.
+
 ## [0.1.6](https://github.com/acquire-project/acquire-driver-hdcam/compare/v0.1.5...v0.1.6) - 2023-08-15
 
 - Fixes a bug where the output trigger source property was set when it shouldn't be.

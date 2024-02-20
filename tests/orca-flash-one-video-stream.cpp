@@ -59,7 +59,7 @@ main()
 
         DEVOK(device_manager_select(dm,
                                     DeviceKind_Camera,
-                                    SIZED("Hamamatsu.*") - 1,
+                                    SIZED("Hamamatsu C13440-20C.*") - 1,
                                     &props.video[0].camera.identifier));
         DEVOK(device_manager_select(dm,
                                     DeviceKind_Storage,
@@ -69,6 +69,7 @@ main()
         storage_properties_init(
           &props.video[0].storage.settings, 0, SIZED("out.tif"), 0, 0, { 0 });
 
+        props.video[0].camera.settings.readout_direction = Direction_Forward;
         OK(acquire_configure(runtime, &props));
 
         AcquirePropertyMetadata metadata = { 0 };
