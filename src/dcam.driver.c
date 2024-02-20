@@ -327,8 +327,7 @@ reset_driver_and_replace_camera(struct Dcam4Camera* self)
                          driver->cameras[i]->camera.device.identifier.name,
                          sizeof(self_name))) {
             *self = *driver->cameras[i];
-            lock_release(&driver->lock);
-            return driver->cameras[i];
+            break;
         }
     }
     lock_release(&driver->lock);
