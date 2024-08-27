@@ -200,7 +200,6 @@ struct Loader
 {
     struct Driver driver;
     struct Driver* inner;
-    HMODULE hmodule;
 };
 
 // static enum DeviceStatusCode
