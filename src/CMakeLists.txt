@@ -15,12 +15,14 @@ if (TARGET hdcam)
             dcam.driver.c
             dcam.camera.h)
     target_link_libraries(${tgt}
-            hdcam
             acquire-core-platform
             acquire-core-logger
             acquire-device-kit
             acquire-device-hal
             )
+    if(WIN64)
+        target_link_libraries(${tgt} hdcam)
+    endif()
 else ()
     add_library(${tgt} MODULE
             unsupported.driver.c
@@ -31,6 +33,8 @@ else ()
             acquire-device-kit
             )
 endif ()
+
+target_include_directories(${tgt} PRIVATE ${DCAMSDK_ROOT_DIR}/inc)
 
 target_enable_simd(${tgt})
 set_target_properties(${tgt} PROPERTIES
