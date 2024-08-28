@@ -20,7 +20,8 @@ if (TARGET hdcam)
             acquire-device-kit
             acquire-device-hal
             )
-    if(WIN64)
+    if(WIN32)
+        message(STATUS "Linking static libs provided by SDK")
         target_link_libraries(${tgt} hdcam)
     endif()
 else ()
