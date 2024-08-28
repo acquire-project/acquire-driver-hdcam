@@ -17,3 +17,5 @@ add_subdirectory(src)
 add_subdirectory(tests)
 
 include(CPack)
+
+message(STATUS "This is just a test to make sure PR tests still work from main")
