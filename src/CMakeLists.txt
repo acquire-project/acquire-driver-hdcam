@@ -34,7 +34,7 @@ else ()
             )
 endif ()
 
-target_include_directories(${tgt} PRIVATE ${DCAMSDK_ROOT_DIR}/inc)
+target_include_directories(${tgt} PRIVATE ${DCAMSDK_ROOT_DIR}/dcamsdk4/inc)
 
 target_enable_simd(${tgt})
 set_target_properties(${tgt} PROPERTIES

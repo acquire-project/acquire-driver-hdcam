@@ -5,8 +5,11 @@
 #
 # That is, the folder containing the "dcamsdk4" or "Hamamatsu_DCAMSDK4_v22126552"
 # folders should be on the system path.
-find_path(DCAMSDK_ROOT_DIR "inc/dcamapi4.h"
-    HINTS ${CMAKE_SOURCE_DIR}/dcamsdk4
+find_path(DCAMSDK_ROOT_DIR
+    NAMES "dcamsdk4/inc/dcamapi4.h"
+    PATH_SUFFIXES 
+        "Hamamatsu_DCAMSDK4_v22126552"
+        "Hamamatsu_DCAMSDK4_v24026764"
     DOC "Hamamatsu DCAM-SDK location"
     NO_CACHE
 )
@@ -15,21 +18,15 @@ find_path(DCAMSDK_ROOT_DIR "inc/dcamapi4.h"
 if(DCAMSDK_ROOT_DIR)
     message(STATUS "DCAM-SDK found: ${DCAMSDK_ROOT_DIR}")
 
-    set(tgt hdcam)
-    if(WIN32)
+    # only do the following if pulling libs from the SDK (windows only)
+    # for other platforms one must separately install the DCAM API
+    if (WIN64)
+        set(tgt hdcam)
         add_library(${tgt} STATIC IMPORTED GLOBAL)
+        target_include_directories(${tgt} INTERFACE ${DCAMSDK_ROOT_DIR}/dcamsdk4/inc)
         set_target_properties(${tgt} PROPERTIES
-            IMPORTED_LOCATION ${DCAMSDK_ROOT_DIR}/lib/win64/dcamapi.lib
+            IMPORTED_LOCATION ${DCAMSDK_ROOT_DIR}/dcamsdk4/lib/win64/dcamapi.lib
         )
-    elseif(LINUX)
-        # add_library(${tgt} SHARED IMPORTED GLOBAL)
-        # target_include_directories(${tgt} INTERFACE ${DCAMSDK_ROOT_DIR}/inc)
-        # set_target_properties(${tgt} PROPERTIES
-        #     IMPORTED_LOCATION ${DCAMSDK_ROOT_DIR}/lib/linux64/libdcamapi.so
-        # )
-        message(DEBUG "Linux platform uses a shared library")
-    else()
-        message(FATAL_ERROR "Unsupported platform")
     endif()
 else()
     message(FATAL_ERROR "DCAM-SDK NOT FOUND")
