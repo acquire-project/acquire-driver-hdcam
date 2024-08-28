@@ -20,7 +20,7 @@ if(DCAMSDK_ROOT_DIR)
 
     # only do the following if pulling libs from the SDK (windows only)
     # for other platforms one must separately install the DCAM API
-    if (WIN64)
+    if (WIN32)
         set(tgt hdcam)
         add_library(${tgt} STATIC IMPORTED GLOBAL)
         target_include_directories(${tgt} INTERFACE ${DCAMSDK_ROOT_DIR}/dcamsdk4/inc)
