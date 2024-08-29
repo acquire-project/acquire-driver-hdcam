@@ -7,7 +7,9 @@
 # folders should be on the system path.
 find_path(DCAMSDK_ROOT_DIR
     NAMES "dcamsdk4/inc/dcamapi4.h"
-    PATH_SUFFIXES "Hamamatsu_DCAMSDK4_v22126552"
+    PATH_SUFFIXES 
+        "Hamamatsu_DCAMSDK4_v24026764"
+        "Hamamatsu_DCAMSDK4_v22126552"
     DOC "Hamamatsu DCAM-SDK location"
     NO_CACHE
 )
