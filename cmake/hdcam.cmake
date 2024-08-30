@@ -1,4 +1,4 @@
-# Locates the Hamamatus DCAM-SDK
+# Locates the Hamamatsu DCAM-SDK
 #
 # In general, if you install the SDK somewhere on your system environment's
 # PATH, cmake will be able to find it.
@@ -14,15 +14,20 @@ find_path(DCAMSDK_ROOT_DIR
     NO_CACHE
 )
 
+
 if(DCAMSDK_ROOT_DIR)
     message(STATUS "DCAM-SDK found: ${DCAMSDK_ROOT_DIR}")
 
-    set(tgt hdcam)
-    add_library(${tgt} STATIC IMPORTED GLOBAL)
-    target_include_directories(${tgt} INTERFACE ${DCAMSDK_ROOT_DIR}/dcamsdk4/inc)
-    set_target_properties(${tgt} PROPERTIES
-        IMPORTED_LOCATION ${DCAMSDK_ROOT_DIR}/dcamsdk4/lib/win64/dcamapi.lib
-    )
+    # only do the following if pulling libs from the SDK (windows only)
+    # for other platforms one must separately install the DCAM API
+    if (WIN32)
+        set(tgt hdcam)
+        add_library(${tgt} STATIC IMPORTED GLOBAL)
+        target_include_directories(${tgt} INTERFACE ${DCAMSDK_ROOT_DIR}/dcamsdk4/inc)
+        set_target_properties(${tgt} PROPERTIES
+            IMPORTED_LOCATION ${DCAMSDK_ROOT_DIR}/dcamsdk4/lib/win64/dcamapi.lib
+        )
+    endif()
 else()
-    message(STATUS "DCAM-SDK NOT FOUND")
+    message(FATAL_ERROR "DCAM-SDK NOT FOUND")
 endif()
